@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "author": "Assistant",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-mega", "id": "mega", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht", "top": -150, "left": 200, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": 150, "left": 200, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-potentiometer", "id": "pot", "top": 50, "left": -200, "attrs": {} },
+    { "type": "wokwi-led", "id": "led_pompe", "top": -150, "left": -100, "attrs": { "color": "blue" } },
+    { "type": "wokwi-led", "id": "led_vent", "top": -150, "left": -50, "attrs": { "color": "green" } }
+  ],
+  "connections": [
+    [ "mega:2", "dht:SDA", "green", [ "v0" ] ],
+    [ "mega:5V", "dht:VCC", "red", [ "v0" ] ],
+    [ "mega:GND.1", "dht:GND", "black", [ "v0" ] ],
+    [ "mega:20", "lcd:SDA", "blue", [ "v0" ] ],
+    [ "mega:21", "lcd:SCL", "yellow", [ "v0" ] ],
+    [ "mega:5V", "lcd:VCC", "red", [ "v0" ] ],
+    [ "mega:GND.2", "lcd:GND", "black", [ "v0" ] ],
+    [ "mega:A0", "pot:SIG", "orange", [ "v0" ] ],
+    [ "mega:5V", "pot:VCC", "red", [ "v0" ] ],
+    [ "mega:GND.3", "pot:GND", "black", [ "v0" ] ],
+    [ "mega:8", "led_pompe:A", "blue", [ "v0" ] ],
+    [ "mega:GND.4", "led_pompe:C", "black", [ "v0" ] ],
+    [ "mega:9", "led_vent:A", "green", [ "v0" ] ],
+    [ "mega:GND.5", "led_vent:C", "black", [ "v0" ] ]
+  ]
+}
