@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-firmware:
+    name: Build AVR firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: platformio-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build (ATmega2560)
+        run: pio run
+
+  host-tests:
+    name: Host-side unit tests (hysteresis, thresholds, commands, faults, soil, DHT22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile and run
+        run: |
+          cd test/host
+          make run
+
+  coverage:
+    name: Code coverage (branch coverage, host tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install gcovr
+        run: pip install gcovr
+
+      - name: Measure coverage
+        run: |
+          cd test/host
+          make coverage
+
+  telemetry-tests:
+    name: Telemetry tooling tests (parser, logger)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install -r tools/telemetry/requirements.txt
+
+      - name: Run tests
+        run: |
+          cd tools/telemetry
+          python3 test_parser.py
+          python3 test_logger_integration.py
