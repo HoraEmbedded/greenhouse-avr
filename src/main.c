@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include "hysteresis.h"
 #include "soil.h"
 #include "thresholds.h"
@@ -11,6 +12,10 @@
 #include "eeprom_config.h"
 #include "fault_handling.h"
 #include "dht22_decode.h"
+#include "ring_buffer.h"
+#include "water_level.h"
+#include "rtc_decode.h"
+#include "schedule.h"
 
 // Hardware Watchdog Timer disable (executes before main)
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
@@ -22,14 +27,44 @@ void wdt_init(void) { MCUSR = 0; wdt_disable(); return; }
 #define BAUD 9600
 #define BRC ((F_CPU/16/BAUD) - 1)
 
-void uart_init() { UBRR0H = (BRC>>8); UBRR0L = BRC; UCSR0B = (1<<TXEN0)|(1<<RXEN0); UCSR0C = (1<<UCSZ01)|(1<<UCSZ00); }
+static volatile RingBuffer uart_rx;
+
+void uart_init() { UBRR0H = (BRC>>8); UBRR0L = BRC; UCSR0B = (1<<TXEN0)|(1<<RXEN0)|(1<<RXCIE0); UCSR0C = (1<<UCSZ01)|(1<<UCSZ00); ring_buffer_init((RingBuffer *)&uart_rx); }
 void uart_send_char(char c) { while (!(UCSR0A & (1<<UDRE0))); UDR0 = c; }
 void uart_send_string(const char* str) { while (*str) uart_send_char(*str++); }
 
-/* RXEN0 was already set in uart_init(), but nothing ever read from it:
- * the receive path existed in hardware and was unused in software. */
-uint8_t uart_available(void) { return (UCSR0A & (1 << RXC0)) != 0; }
-char uart_read_char(void) { return (char)UDR0; }
+/* Interrupt-driven reception, replacing the polling that read UDR0
+ * directly from main()'s loop. The difference isn't cosmetic: dht_read()
+ * blocks for up to ~260 us worst case with interrupts disabled (see its
+ * own comment on cli()/sei()), and command_process() itself takes a few
+ * microseconds per call -- polling UCSR0A/UDR0 straight from main() means
+ * a byte arriving during any of that window, or simply while main() is
+ * elsewhere in its loop, could be silently overwritten by the next byte
+ * before anyone reads it. The ISR captures every byte the instant it
+ * lands, independent of what main() happens to be doing.
+ *
+ * The buffer itself (push/pop/wraparound/overflow) lives in
+ * ring_buffer.c and is tested there on the host -- this ISR is now just
+ * the AVR-specific glue around it, with no logic left of its own to get
+ * wrong. */
+ISR(USART0_RX_vect) {
+    ring_buffer_push((RingBuffer *)&uart_rx, UDR0);
+}
+
+/* uart_rx is declared volatile because the ISR and main() both touch it
+ * asynchronously; ring_buffer_push/pop/available take a plain (non-
+ * volatile) pointer, so calling them here casts that qualifier away for
+ * the duration of each call. That's sound specifically because of who
+ * touches what: ring_buffer_push only ever runs inside the ISR (which
+ * cannot itself be interrupted, since nothing here re-enables interrupts
+ * inside an ISR), and only ever writes .head; ring_buffer_pop/available
+ * only ever run in main() and only ever touch .tail. Neither side can
+ * observe the other mid-update of the field IT doesn't own, so there is
+ * nothing for the missing volatile to protect against within a single
+ * call -- but this is a property of this specific access pattern, not
+ * something the cast itself guarantees in general. */
+uint8_t uart_available(void) { return ring_buffer_available((RingBuffer *)&uart_rx); }
+char uart_read_char(void) { return (char)ring_buffer_pop((RingBuffer *)&uart_rx); }
 
 void uart_send_int(int num) {
     char buffer[10]; int i = 0;
@@ -49,6 +84,31 @@ void i2c_start() { TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN); while (!(TWCR & (1<<T
 void i2c_stop() { TWCR = (1<<TWINT)|(1<<TWSTO)|(1<<TWEN); }
 void i2c_write(uint8_t data) { TWDR = data; TWCR = (1<<TWINT)|(1<<TWEN); while (!(TWCR & (1<<TWINT))); }
 
+/* Reception was never needed until the RTC: the LCD driver only ever
+ * writes. TWEA (ack) tells the DS1307 more bytes will be read; its
+ * absence (i2c_read_nack) tells it this is the last one -- standard
+ * I2C multi-byte read protocol. */
+uint8_t i2c_read_ack() { TWCR = (1<<TWINT)|(1<<TWEN)|(1<<TWEA); while (!(TWCR & (1<<TWINT))); return TWDR; }
+uint8_t i2c_read_nack() { TWCR = (1<<TWINT)|(1<<TWEN); while (!(TWCR & (1<<TWINT))); return TWDR; }
+
+// DS1307 real-time clock, natively simulated by Wokwi (unlike the
+// DS3231, which Wokwi only supports through unofficial community
+// custom chips -- see docs.wokwi.com/parts/wokwi-ds1307). Register
+// 0x02 is hours; bit 6 selects 12/24-hour mode, masked off here since
+// the DS1307 defaults to 24-hour mode on power-up and nothing in this
+// firmware ever changes that.
+#define DS1307_ADDR 0x68
+uint8_t rtc_read_hour(void) {
+    i2c_start();
+    i2c_write(DS1307_ADDR << 1);
+    i2c_write(0x02);
+    i2c_start();  // repeated start: switch from write to read
+    i2c_write((DS1307_ADDR << 1) | 1);
+    uint8_t raw = i2c_read_nack();
+    i2c_stop();
+    return bcd_to_decimal(raw & 0x3F);
+}
+
 void lcd_send_nibble(uint8_t half_byte, uint8_t mode) {
     uint8_t data = half_byte | mode | 0x08; 
     i2c_start(); i2c_write(LCD_ADDR << 1); i2c_write(data | 0x04); i2c_write(data & ~0x04); i2c_stop(); _delay_us(100);
@@ -62,7 +122,7 @@ void lcd_init() {
 }
 
 void lcd_print(const char* str) { while (*str) lcd_send(*str++, 1); }
-void lcd_set_cursor(uint8_t col, uint8_t row) { uint8_t row_offsets[] = { 0x00, 0x40 }; lcd_send(0x80 | (col + row_offsets[row]), 0); }
+void lcd_set_cursor(uint8_t col, uint8_t row) { static const uint8_t row_offsets[] = { 0x00, 0x40 }; lcd_send(0x80 | (col + row_offsets[row]), 0); }
 
 void lcd_print_int(int num) {
     char buffer[10]; int i = 0;
@@ -143,6 +203,12 @@ uint16_t adc_read() {
     return ADC;
 }
 
+// water_present() is the only piece of GPIO glue for the float switch --
+// the actual decision (should the pump run given this reading) lives in
+// water_level.c and is tested there, same split as everywhere else in
+// this firmware.
+uint8_t water_present(void) { return !(PINE & (1 << PE5)); }
+
 // ==============================================================================
 // INTERRUPT HANDLING (Timer 1)
 // ==============================================================================
@@ -168,10 +234,16 @@ int main(void) {
     
     // Configure pump (PH5) and fan (PH6) pins as output
     DDRH |= (1 << PH5) | (1 << PH6); 
+
+    // Water level float switch: digital pin 3 (PE5), input with internal
+    // pull-up. Wired (see diagram.json) so the switch closes to GND when
+    // the float rises -- water present reads LOW. Left open (float down,
+    // OR a broken/disconnected wire) reads HIGH via the pull-up: a
+    // wiring fault fails toward "no water confirmed", which blocks the
+    // pump rather than leaving it free to run unsupervised.
+    DDRE &= ~(1 << PE5);
+    PORTE |= (1 << PE5);
     
-    int temperature, air_hum, dht_state;
-    uint16_t raw_soil_value;
-    int soil_hum_percent;
     uint8_t fan_state = 0; 
     uint8_t pump_state = 0;
     uint8_t dht_consecutive_failures = 0;
@@ -187,7 +259,26 @@ int main(void) {
     
     sei(); 
 
+    // Hardware safety net: wdt_init() above disabled the watchdog left
+    // running from any prior reset (required so a genuine watchdog reset
+    // doesn't loop forever resetting itself). Now that initialisation is
+    // done, re-enable it deliberately. 2 s comfortably covers the worst
+    // case of dht_read()'s own timeout cascade (~260 ms, measured by
+    // counting its loop iterations) with margin to spare -- if the
+    // firmware ever hangs somewhere that ISN'T a bounded wait like that
+    // one, this is what brings it back without someone unplugging it.
+    wdt_enable(WDTO_2S);
+
+    set_sleep_mode(SLEEP_MODE_IDLE);
+
     while (1) {
+
+        // Fed once per loop iteration. The loop's own body (serial
+        // command handling, then at most one measurement cycle) is
+        // always well under 2 s -- if two consecutive iterations ever
+        // exceed that, something is genuinely stuck, and a reset is the
+        // correct response, not a longer timeout.
+        wdt_reset();
 
         // Serial command handling, independent of the 2 s measurement
         // cycle: a command typed at any moment is picked up on the next
@@ -234,7 +325,11 @@ int main(void) {
 
         if (measure_flag == 1) {
             measure_flag = 0; 
-            
+
+            int temperature, air_hum, dht_state;
+            uint16_t raw_soil_value;
+            int soil_hum_percent;
+
             dht_state = dht_read();
             raw_soil_value = adc_read();
             soil_hum_percent = soil_percent_from_raw(raw_soil_value);
@@ -247,6 +342,21 @@ int main(void) {
             // silently freeze irrigation decisions too. Fixed here: the
             // pump is now driven every cycle, regardless of dht_state.
             pump_state = pump_hysteresis(pump_state, (int8_t)soil_hum_percent, &config);
+
+            // Reservoir safety check overrides hysteresis, not the
+            // other way around -- see water_level.c for why. This has
+            // to happen AFTER pump_hysteresis() computes its opinion,
+            // and BEFORE that opinion reaches the relay.
+            uint8_t water_ok = water_present();
+            pump_state = pump_output_state(pump_state, water_ok);
+
+            // Daytime-only irrigation: overrides hysteresis the same
+            // way the water check does, for an agronomic reason this
+            // time rather than a hardware-safety one -- see schedule.h.
+            uint8_t current_hour = rtc_read_hour();
+            uint8_t daytime = is_daytime(current_hour);
+            if (!daytime) pump_state = 0;
+
             if (pump_state) PORTH |= (1 << PH5); else PORTH &= ~(1 << PH5);
             
             lcd_send(0x01, 0); // Clear LCD
@@ -272,13 +382,16 @@ int main(void) {
                 lcd_print("T:"); lcd_print_int(temperature/10); lcd_print(" F:"); lcd_print(fan_state ? "ON " : "OFF");
                 lcd_set_cursor(0, 1);
                 lcd_print("S:"); lcd_print_int(soil_hum_percent); lcd_print("% P:"); lcd_print(pump_state ? "ON " : "OFF");
+                if (!water_ok) lcd_print(" LOW");
                 
                 // Send data via UART
                 uart_send_string("T:"); uart_send_int(temperature/10);
                 uart_send_string("C | Air:"); uart_send_int(air_hum/10);
                 uart_send_string("% | Soil:"); uart_send_int(soil_hum_percent);
                 uart_send_string("% | Fan:"); uart_send_string(fan_state ? "ON" : "OFF");
-                uart_send_string(" | Pump:"); uart_send_string(pump_state ? "ON\r\n" : "OFF\r\n");
+                uart_send_string(" | Pump:"); uart_send_string(pump_state ? "ON" : "OFF");
+                uart_send_string(" | Water:"); uart_send_string(water_ok ? "OK" : "LOW");
+                uart_send_string(" | Hour:"); uart_send_int(current_hour); uart_send_string("\r\n");
             } else {
                 // The pump above is unaffected by this branch (see the
                 // comment further up). The fan is a different story: it
@@ -301,8 +414,38 @@ int main(void) {
                 uart_send_int(dht_consecutive_failures);
                 uart_send_string(" | Fan:"); uart_send_string(fan_state ? "ON" : "OFF");
                 uart_send_string(" | Soil:"); uart_send_int(soil_hum_percent);
-                uart_send_string("% | Pump:"); uart_send_string(pump_state ? "ON\r\n" : "OFF\r\n");
+                uart_send_string("% | Pump:"); uart_send_string(pump_state ? "ON" : "OFF");
+                uart_send_string(" | Water:"); uart_send_string(water_ok ? "OK" : "LOW");
+                uart_send_string(" | Hour:"); uart_send_int(current_hour); uart_send_string("\r\n");
             }
+        }
+
+        // Nothing left to do this iteration: sleep until the next
+        // interrupt (Timer1's 2 s tick, or a byte arriving on UART)
+        // instead of spinning in a busy-wait for up to 2 seconds every
+        // cycle. SLEEP_MODE_IDLE only stops the CPU core -- Timer1, the
+        // USART, TWI, and the watchdog all keep running normally, so
+        // every wake source this firmware actually needs still works.
+        // A deeper mode (Power-down) would also stop the USART's clock,
+        // silently breaking command reception.
+        //
+        // The disable-check-sleep sequence below is not just tidy
+        // ordering: it closes a real race. Without it, an interrupt
+        // could fire in the gap between "check if there's work" and
+        // "go to sleep", and that wake-up would be missed until the
+        // NEXT interrupt (up to 2 s later, for a command that should
+        // have been answered immediately). AVR guarantees the
+        // instruction right after sei() always executes before any
+        // pending interrupt is serviced, so sei() immediately followed
+        // by sleep_cpu() cannot lose a wake-up that arrives in between.
+        cli();
+        if (!uart_available() && measure_flag == 0) {
+            sleep_enable();
+            sei();
+            sleep_cpu();   // execution resumes here after any interrupt
+            sleep_disable();
+        } else {
+            sei();
         }
     }
     
