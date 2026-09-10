@@ -22,7 +22,8 @@ from parser import parse_line
 
 FIELDNAMES = [
     "timestamp_utc", "temperature_c", "air_humidity_percent",
-    "soil_humidity_percent", "fan_on", "pump_on",
+    "soil_humidity_percent", "fan_on", "pump_on", "water_ok", "hour",
+    "sensor_error", "consecutive_failures",
 ]
 
 
@@ -53,11 +54,21 @@ def run(ser, csv_file, verbose: bool = True) -> None:
         csv_file.flush()
 
         if verbose:
-            print(f"  T={reading['temperature_c']:>3}C  "
-                  f"Air={reading['air_humidity_percent']:>3}%  "
-                  f"Soil={reading['soil_humidity_percent']:>3}%  "
-                  f"Fan={'ON ' if reading['fan_on'] else 'OFF'}  "
-                  f"Pump={'ON' if reading['pump_on'] else 'OFF'}")
+            if reading["sensor_error"]:
+                print(f"  ! SENSOR_ERR (x{reading['consecutive_failures']})  "
+                      f"Soil={reading['soil_humidity_percent']:>3}%  "
+                      f"Fan={'ON ' if reading['fan_on'] else 'OFF'}  "
+                      f"Pump={'ON' if reading['pump_on'] else 'OFF'}  "
+                      f"Water={'OK ' if reading['water_ok'] else 'LOW'}  "
+                      f"Hour={reading['hour']:>2}")
+            else:
+                print(f"  T={reading['temperature_c']:>3}C  "
+                      f"Air={reading['air_humidity_percent']:>3}%  "
+                      f"Soil={reading['soil_humidity_percent']:>3}%  "
+                      f"Fan={'ON ' if reading['fan_on'] else 'OFF'}  "
+                      f"Pump={'ON' if reading['pump_on'] else 'OFF'}  "
+                      f"Water={'OK ' if reading['water_ok'] else 'LOW'}  "
+                      f"Hour={reading['hour']:>2}")
 
 
 def main() -> None:
