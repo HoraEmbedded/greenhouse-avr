@@ -6,6 +6,12 @@
 /* EEPROM layout: [0] magic byte, [1 .. 1+sizeof(struct)-1] the struct
  * itself, [1+sizeof(struct)] a one-byte XOR checksum of the struct. */
 static uint8_t * const EE_MAGIC_ADDR  = (uint8_t *)0;
+// cppcheck-suppress intToPointerCast
+// This isn't a real pointer -- it's an absolute EEPROM byte address (the
+// standard avr-libc idiom: eeprom_read_byte/eeprom_update_byte take a
+// "pointer" that's really just an offset into EEPROM's own address
+// space, distinct from RAM). Flagged by cppcheck's generic portability
+// check, which has no AVR-specific context; intentional here.
 static void    * const EE_CONFIG_ADDR = (void *)1;
 
 static uint8_t checksum_of(const GreenhouseThresholds *t) {
