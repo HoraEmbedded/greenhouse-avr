@@ -28,7 +28,7 @@ jobs:
         run: pio run
 
   host-tests:
-    name: Host-side unit tests (hysteresis, thresholds, commands, faults, soil, DHT22)
+    name: Host-side unit tests (hysteresis, thresholds, commands, faults, soil, DHT22, ring buffer, water level, RTC, schedule)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +55,44 @@ jobs:
         run: |
           cd test/host
           make coverage
+
+  stack-analysis:
+    name: Worst-case stack usage analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AVR toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-avr avr-libc
+
+      - name: Analyze
+        run: |
+          cd tools
+          python3 stack_analysis.py
+
+  static-analysis:
+    name: Static analysis (cppcheck) + EEPROM lifetime sanity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning,style,performance,portability \
+                    --inconclusive --std=c11 --error-exitcode=1 \
+                    -Isrc src/*.c
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: EEPROM lifetime sanity check
+        run: |
+          cd tools
+          python3 test_eeprom_lifetime.py
 
   telemetry-tests:
     name: Telemetry tooling tests (parser, logger)
