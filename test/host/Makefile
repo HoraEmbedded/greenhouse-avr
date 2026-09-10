@@ -37,6 +37,18 @@ test_soil_calibrated_inverted: test_soil_calibrated.c $(SRC)/soil.c
 test_dht22_decode: test_dht22_decode.c $(SRC)/dht22_decode.c
 	$(CC) $(CFLAGS) $^ -o $@
 
+test_ring_buffer: test_ring_buffer.c $(SRC)/ring_buffer.c
+	$(CC) $(CFLAGS) $^ -o $@
+
+test_water_level: test_water_level.c $(SRC)/water_level.c
+	$(CC) $(CFLAGS) $^ -o $@
+
+test_rtc_decode: test_rtc_decode.c $(SRC)/rtc_decode.c
+	$(CC) $(CFLAGS) $^ -o $@
+
+test_schedule: test_schedule.c $(SRC)/schedule.c
+	$(CC) $(CFLAGS) $^ -o $@
+
 # --- Coverage (gcov/gcovr) -------------------------------------------
 #
 # Rebuilds the same test/source pairs above with --coverage instrumentation,
@@ -56,7 +68,7 @@ COVFLAGS := -std=c11 -Wall -Wextra -O0 --coverage
 
 .PHONY: coverage
 coverage:
-	@rm -f *.gcda *.gcno *.gcov cov_*
+	@python clean.py
 	$(CC) $(COVFLAGS) test_hysteresis.c $(SRC)/hysteresis.c $(SRC)/thresholds.c -o cov_hysteresis
 	$(CC) $(COVFLAGS) test_thresholds.c $(SRC)/thresholds.c -o cov_thresholds
 	$(CC) $(COVFLAGS) test_command.c $(SRC)/command.c $(SRC)/thresholds.c -o cov_command
@@ -67,8 +79,13 @@ coverage:
 	$(CC) $(COVFLAGS) -DSOIL_ADC_AT_0_PERCENT=900 -DSOIL_ADC_AT_100_PERCENT=100 \
 	      test_soil_calibrated.c $(SRC)/soil.c -o cov_soil_cal_inverted
 	$(CC) $(COVFLAGS) test_dht22_decode.c $(SRC)/dht22_decode.c -o cov_dht22_decode
+	$(CC) $(COVFLAGS) test_ring_buffer.c $(SRC)/ring_buffer.c -o cov_ring_buffer
+	$(CC) $(COVFLAGS) test_water_level.c $(SRC)/water_level.c -o cov_water_level
+	$(CC) $(COVFLAGS) test_rtc_decode.c $(SRC)/rtc_decode.c -o cov_rtc_decode
+	$(CC) $(COVFLAGS) test_schedule.c $(SRC)/schedule.c -o cov_schedule
 	for b in cov_hysteresis cov_thresholds cov_command cov_fault_handling \
-	         cov_soil cov_soil_cal_normal cov_soil_cal_inverted cov_dht22_decode; do \
+	         cov_soil cov_soil_cal_normal cov_soil_cal_inverted cov_dht22_decode \
+	         cov_ring_buffer cov_water_level cov_rtc_decode cov_schedule; do \
 	    ./$$b > /dev/null; \
 	done
 	gcovr --root ../.. --filter '../../src/' --txt-metric branch -s .
@@ -76,7 +93,7 @@ coverage:
 .PHONY: run clean
 run: test_hysteresis test_thresholds test_command test_fault_handling \
      test_soil test_soil_calibrated_normal test_soil_calibrated_inverted \
-     test_dht22_decode
+     test_dht22_decode test_ring_buffer test_water_level test_rtc_decode test_schedule
 	./test_hysteresis
 	@echo
 	./test_thresholds
@@ -92,9 +109,14 @@ run: test_hysteresis test_thresholds test_command test_fault_handling \
 	./test_soil_calibrated_inverted
 	@echo
 	./test_dht22_decode
+	@echo
+	./test_ring_buffer
+	@echo
+	./test_water_level
+	@echo
+	./test_rtc_decode
+	@echo
+	./test_schedule
 
 clean:
-	rm -f test_hysteresis test_thresholds test_command test_fault_handling \
-	      test_soil test_soil_calibrated_normal test_soil_calibrated_inverted \
-	      test_dht22_decode
-	rm -f *.gcda *.gcno *.gcov cov_*
+	python clean.py
