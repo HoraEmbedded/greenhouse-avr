@@ -3,8 +3,12 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-*.su
+
 *.o
+*.su
 *.gcda
 *.gcno
 *.gcov
+.pio/
+test/host/build/
+coverage/

@@ -1,4 +1,3 @@
-
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdint.h>
@@ -81,7 +80,19 @@ void uart_send_int(int num) {
 
 void i2c_init() { PORTD |= (1<<PD0)|(1<<PD1); TWSR = 0x00; TWBR = 72; TWCR = (1<<TWEN); }
 void i2c_start() { TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN); while (!(TWCR & (1<<TWINT))); }
-void i2c_stop() { TWCR = (1<<TWINT)|(1<<TWSTO)|(1<<TWEN); }
+// STOP doesn't set TWINT the way every other TWI operation does, so
+// there's no interrupt flag to wait on -- the hardware clears TWSTO
+// itself once the STOP condition has actually gone out on the bus, and
+// that's what must be polled here. Without this wait, this function
+// returns as soon as the STOP is merely *requested*, not once it has
+// completed -- harmless with a single I2C device (there was enough
+// other work between transactions to cover the gap by accident), but a
+// real race once a second device (the RTC) started issuing a full
+// transaction of its own immediately before the LCD's: the LCD's next
+// i2c_start() could fire before the RTC's i2c_stop() had physically
+// finished, corrupting the bus. This is what caused the garbled
+// characters on the LCD after the RTC was added.
+void i2c_stop() { TWCR = (1<<TWINT)|(1<<TWSTO)|(1<<TWEN); while (TWCR & (1<<TWSTO)); }
 void i2c_write(uint8_t data) { TWDR = data; TWCR = (1<<TWINT)|(1<<TWEN); while (!(TWCR & (1<<TWINT))); }
 
 /* Reception was never needed until the RTC: the LCD driver only ever
@@ -450,4 +461,4 @@ int main(void) {
     }
     
     return 0;
-}
+}
