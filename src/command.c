@@ -1,10 +1,5 @@
 #include "command.h"
 
-/* No <string.h>/sscanf on purpose: this project hand-writes its own
- * primitives elsewhere (uart_send_int in main.c does the same for the
- * opposite direction), and a hand-rolled parser stays a fraction of the
- * Flash cost that pulling in scanf-family code would add. */
-
 static uint8_t starts_with(const char *s, const char *prefix) {
     while (*prefix) {
         if (*s != *prefix) return 0;
