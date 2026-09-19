@@ -3,15 +3,9 @@
 
 #define EE_MAGIC 0xA5
 
-/* EEPROM layout: [0] magic byte, [1 .. 1+sizeof(struct)-1] the struct
- * itself, [1+sizeof(struct)] a one-byte XOR checksum of the struct. */
 static uint8_t * const EE_MAGIC_ADDR  = (uint8_t *)0;
+/* Not a real pointer -- an EEPROM byte offset (standard avr-libc idiom). */
 // cppcheck-suppress intToPointerCast
-// This isn't a real pointer -- it's an absolute EEPROM byte address (the
-// standard avr-libc idiom: eeprom_read_byte/eeprom_update_byte take a
-// "pointer" that's really just an offset into EEPROM's own address
-// space, distinct from RAM). Flagged by cppcheck's generic portability
-// check, which has no AVR-specific context; intentional here.
 static void    * const EE_CONFIG_ADDR = (void *)1;
 
 static uint8_t checksum_of(const GreenhouseThresholds *t) {
@@ -35,9 +29,6 @@ void eeprom_config_load(GreenhouseThresholds *out) {
             *out = candidate;
             return;
         }
-        /* Magic byte matched by chance, or a write was interrupted
-         * mid-way (checksum or validity now fails): fall through to
-         * defaults rather than trust a partially-written image. */
     }
 
     GreenhouseThresholds defaults = GREENHOUSE_DEFAULT_THRESHOLDS;
