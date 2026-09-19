@@ -1,15 +1,7 @@
-"""Reads live telemetry from the greenhouse firmware over serial and
-appends each valid reading to a CSV file.
+"""Reads live telemetry over serial, appends valid readings to a CSV.
 
-Usage:
-    python3 logger.py --port /dev/ttyUSB0 --output telemetry.csv
-    python3 logger.py --port COM5 --output telemetry.csv     (Windows)
-
+Usage: python logger.py --port COM5 --output telemetry.csv
 Requires: pip install pyserial
-
-This file is intentionally thin: the only logic it contains is "open a
-port, open a file, loop". The actual decision of what a line means lives
-in parser.py and is tested there, without any serial port involved.
 """
 import argparse
 import csv
@@ -28,9 +20,7 @@ FIELDNAMES = [
 
 
 def run(ser, csv_file, verbose: bool = True) -> None:
-    """The actual read-parse-write loop, factored out of main() so it can
-    be driven by a fake serial-like object in tests (see
-    test_logger_integration.py) without touching a real port."""
+    """Read-parse-write loop, factored out for testing with a fake port."""
     writer = csv.DictWriter(csv_file, fieldnames=FIELDNAMES)
     if csv_file.tell() == 0:
         writer.writeheader()
@@ -38,15 +28,13 @@ def run(ser, csv_file, verbose: bool = True) -> None:
     while True:
         raw = ser.readline()
         if not raw:
-            continue  # read timeout with no data: keep waiting
+            continue
 
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8", errors="replace")
 
         reading = parse_line(raw)
         if reading is None:
-            # Not every line is telemetry (command responses, the boot
-            # message) -- expected, not an error.
             continue
 
         row = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), **reading}
@@ -73,15 +61,12 @@ def run(ser, csv_file, verbose: bool = True) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", required=True,
-                         help="Serial port, e.g. COM5 or /dev/ttyUSB0")
+    parser.add_argument("--port", required=True)
     parser.add_argument("--baud", type=int, default=9600)
-    parser.add_argument("--output", default="telemetry.csv",
-                         help="CSV file to append to (created if absent)")
+    parser.add_argument("--output", default="telemetry.csv")
     args = parser.parse_args()
 
     output_path = Path(args.output)
-
     print(f"Opening {args.port} at {args.baud} baud...")
     with serial.Serial(args.port, args.baud, timeout=5) as ser, \
          open(output_path, "a", newline="", encoding="utf-8") as csv_file:
