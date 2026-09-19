@@ -1,10 +1,9 @@
-# Serre automatisée — ATmega2560
+# Serre automatisée : ATmega2560
 
 [![CI](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml/badge.svg)](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml)
 
 Firmware bare-metal (Arduino Mega / ATmega2560) pour la gestion automatisée d'une serre : température/humidité (DHT22), humidité du sol (ADC), ventilateur et pompe pilotés par hystérésis, seuils configurables en EEPROM via commandes série, sécurité pompe (niveau d'eau + irrigation diurne uniquement), simulation Wokwi.
 
-**Documentation complète** (démarche, décisions de conception, résultats détaillés, guide pas-à-pas, captures d'écran) : [`docs/GUIDE_COMPLET.md`](docs/GUIDE_COMPLET.md).
 
 ## Ce que ce projet démontre
 
@@ -69,7 +68,6 @@ python generate_drift_scenario.py --output drift_scenario.yaml
 python capture_and_plot.py --scenario drift_scenario.yaml --duration 100
 ```
 
-Détails, dépannage et procédure complète pas à pas : [`docs/GUIDE_COMPLET.md`](docs/GUIDE_COMPLET.md).
 
 ## Limites connues
 
