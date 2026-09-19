@@ -1,122 +1,78 @@
-# Serre automatisée sur ATmega2560
+# Serre automatisée — ATmega2560
 
-[![CI](https://github.com/HoraEmbedded/Projets_GSEAs/actions/workflows/ci-greenhouse.yml/badge.svg)](https://github.com/HoraEmbedded/Projets_GSEAs/actions/workflows/ci-greenhouse.yml)
+[![CI](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml/badge.svg)](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml)
 
-Firmware bare-metal, sans système d'exploitation, pour la gestion autonome d'une serre : température et humidité de l'air (DHT22), humidité du sol (ADC), ventilateur et pompe pilotés par hystérésis, seuils reconfigurables par commandes série et persistés en EEPROM.
+Firmware bare-metal (Arduino Mega / ATmega2560) pour la gestion automatisée d'une serre : température/humidité (DHT22), humidité du sol (ADC), ventilateur et pompe pilotés par hystérésis, seuils configurables en EEPROM via commandes série, sécurité pompe (niveau d'eau + irrigation diurne uniquement), simulation Wokwi.
 
-La logique de décision n'accède à aucun registre. Elle se compile et se teste sur PC avec `gcc`, sans carte.
+**Documentation complète** (démarche, décisions de conception, résultats détaillés, guide pas-à-pas, captures d'écran) : [`docs/GUIDE_COMPLET.md`](docs/GUIDE_COMPLET.md).
 
-## Le firmware en marche
+## Ce que ce projet démontre
 
-| Seuil chaud, sol sec | Seuil froid, sol humide |
-|---|---|
-| ![Wokwi, 35 °C, sol 12 %](pictures/wokwi-seuil-chaud.png) | ![Wokwi, 9 °C, sol 63 %](pictures/wokwi-seuil-froid.png) |
-| 35 °C, sol à 12 % : ventilateur et pompe commandés | 9 °C, sol à 63 % : les deux actionneurs retombent |
+- Logique de décision séparée du matériel — testable sans microcontrôleur (12 suites, 98 cas, `gcc` natif)
+- Sûreté de fonctionnement : watchdog matériel, dégradation gracieuse en cas de panne capteur, deux gardes de sécurité indépendantes sur la pompe
+- Analyse formelle du pire cas de pile (63/8192 octets, vérifiée par désassemblage réel)
+- Preuve algébrique sur la durée de vie EEPROM (pas une estimation à la louche)
+- Pipeline de vérification complet en CI (6 jobs) : build, tests, couverture, analyse statique, analyse de pile, télémétrie
+- Outillage Python de capture/visualisation, avec simulation Wokwi entièrement automatisée (`wokwi-cli`)
 
-![Télémétrie série](pictures/telemetrie-serie.png)
-
-Télémétrie série : la pompe coupe dès que le sol repasse au-dessus du seuil haut, le ventilateur ne commute qu'après franchissement du seuil de température, sans oscillation à la bascule.
-
-## Chiffres
-
-| Mesure | Valeur |
-|---|---|
-| Tests sur hôte | 12 suites, 98 cas |
-| Couverture de lignes et de fonctions | 100 % |
-| Couverture de branches | 93,5 % (86/92, le reste inatteignable) |
-| Pire cas de pile | 63 octets sur 8 192 |
-| Flash | ≈ 4,1 Ko sur 253 952 |
-| RAM statique | 425 octets sur 8 192 |
-| Durée de vie EEPROM | > 50 ans en usage normal, 1 an sous écriture continue |
-
-Le pire cas de pile est obtenu par désassemblage du binaire. La durée de vie EEPROM est calculée à partir du nombre de cycles garanti et de la fréquence d'écriture réelle (`tools/eeprom_lifetime.py`).
-
-## Sûreté de fonctionnement
-
-- Watchdog matériel.
-- Dégradation gracieuse après pannes répétées du DHT22 : les actionneurs passent dans un état sûr plutôt que de suivre une mesure fausse.
-- Deux gardes indépendantes sur la pompe : niveau d'eau du réservoir et fenêtre horaire diurne.
-- Configuration EEPROM protégée par octet magique et somme de contrôle XOR ; retour aux valeurs d'usine si la lecture échoue.
-
-## Matériel
+## Composants matériels
 
 | Composant | Rôle | Interface |
 |---|---|---|
 | DHT22 | Température et humidité de l'air | 1-Wire, broche 2 |
 | Potentiomètre | Simule une sonde d'humidité du sol | ADC, A0 |
-| DS1307 | Horloge temps réel, irrigation de jour uniquement | I2C (0x68), partagé avec l'écran |
-| Interrupteur à flotteur | Niveau d'eau du réservoir | Numérique, broche 3 |
-| LCD 1602 | Affichage local | I2C (0x27) |
-| LED bleue et verte | Simulent les relais pompe et ventilateur | Numérique, broches 8 et 9 |
+| DS1307 | Horloge temps réel — irrigation le jour uniquement | I2C (0x68), partagé avec l'écran |
+| Interrupteur à flotteur | Niveau d'eau du réservoir — sécurité pompe | Numérique, broche 3 |
+| LCD 1602 | Affichage local (température, humidité, états) | I2C (0x27) |
+| LED bleue / verte | Simulent les relais pompe / ventilateur | Numérique, broches 8/9 |
 
 ## Architecture logicielle
 
-Couche matérielle, accès registre, non portable :
-
 | Module | Rôle |
 |---|---|
-| `ring_buffer.c` | Réception UART par interruption |
-| `dht22_decode.c` | Décodage de la trame 1-Wire du DHT22 |
-| `rtc_decode.c` | Décodage BCD de l'horloge DS1307 |
-| `soil.c` | Conversion ADC vers pourcentage d'humidité |
-
-Couche de décision, C portable, couverte par les tests hôte :
-
-| Module | Rôle |
-|---|---|
-| `hysteresis.c` | Décision ventilateur et pompe, bande morte |
+| `hysteresis.c` | Décision ventilateur/pompe (bande morte) |
 | `thresholds.c` | Validation des seuils |
-| `schedule.c` | Garde horaire jour / nuit sur l'irrigation |
-| `water_level.c` | Garde niveau d'eau sur la pompe |
-| `fault_handling.c` | Dégradation après pannes répétées du capteur |
-| `command.c` | Analyseur de commandes série |
-| `eeprom_config.c` | Persistance, octet magique et somme de contrôle |
+| `command.c` | Analyseur de commandes série (`GET`/`SET`/`RESET`) |
+| `eeprom_config.c` | Persistance (octet magique + checksum XOR) |
+| `fault_handling.c` | Dégradation après pannes DHT22 répétées |
+| `ring_buffer.c` | Réception UART par interruption |
+| `water_level.c` / `schedule.c` | Gardes de sécurité pompe (eau, horaire jour/nuit) |
+| `rtc_decode.c` / `dht22_decode.c` / `soil.c` | Décodage capteurs |
 
-## Commandes série
+## Chiffres vérifiés
 
-| Commande | Effet |
+| | |
 |---|---|
-| `GET` | Renvoie les seuils courants et l'état des actionneurs |
-| `SET <clé> <valeur>` | Modifie un seuil, valide la plage, écrit en EEPROM |
-| `RESET` | Restaure les seuils d'usine |
+| Tests hôte | 12 suites, 98 cas |
+| Couverture | 100 % lignes, 100 % fonctions, 93,5 % branches (86/92 — le reste prouvé inatteignable) |
+| Pire cas de pile | 63 / 8192 octets (99,2 % de marge) |
+| Flash / RAM | ~4,1 Ko / 425 octets sur 253 952 / 8192 |
+| Durée de vie EEPROM | > 50 ans en usage normal, 1 an même en cas d'abus délibéré |
 
-## Faire tourner le projet
+## Démarrage rapide
 
 ```bash
-# Firmware sur cible
+# Firmware
 pio run
-pio run --target upload
 
-# Tests unitaires et couverture, sur PC, sans carte
+# Tests unitaires + couverture
 cd test/host && make run && make coverage
 
-# Analyse statique et pire cas de pile
-cppcheck --enable=warning,style,performance,portability \
-         --inconclusive --std=c11 -Isrc src/*.c
+# Analyse statique et pile
+cppcheck --enable=warning,style,performance,portability --inconclusive --std=c11 -Isrc src/*.c
 python tools/stack_analysis.py
 
-# Durée de vie EEPROM
-python tools/eeprom_lifetime.py
-
-# Télémétrie, capture automatisée via Wokwi
+# Télémétrie (capture automatisée via Wokwi)
 cd tools/telemetry
 pip install -r requirements.txt
 python generate_drift_scenario.py --output drift_scenario.yaml
 python capture_and_plot.py --scenario drift_scenario.yaml --duration 100
 ```
 
-L'intégration continue rejoue à chaque commit : build, tests, couverture, analyse statique, analyse de pile, capture de télémétrie.
+Détails, dépannage et procédure complète pas à pas : [`docs/GUIDE_COMPLET.md`](docs/GUIDE_COMPLET.md).
 
+## Limites connues
 
-
-## Ce qui reste à faire
-
-- **Sonde de sol réelle.** Le potentiomètre sera remplacé par une sonde capacitive, avec courbe de calibration relevée au banc et coefficients rangés en EEPROM.
-- **Validation sur carte physique.** Wokwi émule l'ATmega2560 et exécute le binaire compilé, ce qui exerce réellement le code d'accès aux registres et le décodage des trames capteur. Restent à éprouver sur matériel : les timings analogiques, le bruit sur l'ADC, l'alimentation et les appels de courant des actionneurs, les perturbations du relais.
-- **Fenêtre horaire configurable.** Le créneau jour / nuit est aujourd'hui une constante de compilation ; il doit rejoindre les seuils réglables par commande `SET` et persistés en EEPROM.
-- **Portage sur RTOS.** Le cœur de décision est déjà indépendant du matériel : le porter sur Zephyr permettrait d'éprouver ce découplage sur un autre build system et un autre ordonnanceur, sans toucher à la logique.
-
----
-
-Horacia Azonhoumon, élève ingénieure GSEA, ENSA Tanger.
-[hora-portfolio.vercel.app](https://hora-portfolio.vercel.app/) · [@HoraEmbedded](https://github.com/HoraEmbedded)
+- Sonde de sol simulée par un potentiomètre — calibration réelle à refaire sur une vraie sonde capacitive
+- Aucune validation sur silicium réel, tout est vérifié en simulation + tests hôte
+- Fenêtre horaire jour/nuit en constante de compilation, pas encore configurable en EEPROM
