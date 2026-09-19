@@ -3,7 +3,7 @@
   "author": "Horacia",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-arduino-mega", "id": "mega", "top": 0.6, "left": -61.2, "attrs": {} },
+    { "type": "wokwi-arduino-mega", "id": "mega", "top": 0, "left": 0, "attrs": {} },
     { "type": "wokwi-dht22", "id": "dht", "top": -190, "left": -60, "attrs": {} },
     { "type": "wokwi-potentiometer", "id": "pot", "top": -190, "left": 220, "attrs": {} },
     {
@@ -24,17 +24,17 @@
       "type": "wokwi-lcd1602",
       "id": "lcd",
       "top": 25.6,
-      "left": 351.2,
+      "left": 408.8,
       "attrs": { "pins": "i2c" }
     },
     {
       "type": "wokwi-slide-switch",
       "id": "water_switch",
-      "top": -60,
-      "left": -220,
+      "top": -62.8,
+      "left": -150.5,
       "attrs": { "bounce": "0" }
     },
-    { "type": "wokwi-ds1307", "id": "rtc", "top": -101.4, "left": 470.5, "attrs": {} }
+    { "type": "wokwi-ds1307", "id": "rtc", "top": -120.6, "left": 480.1, "attrs": {} }
   ],
   "connections": [
     [ "mega:2", "dht:SDA", "green", [ "v0" ] ],
