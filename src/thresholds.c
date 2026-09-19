@@ -13,3 +13,6 @@ uint8_t thresholds_valid(const GreenhouseThresholds *t) {
 
     return 1;
 }
+
+/* NOTE: two branches above (fan_off > MAX, pump_off < 0) are
+ * unreachable by construction -- see docs, not a test gap. */
