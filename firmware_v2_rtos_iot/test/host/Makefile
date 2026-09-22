@@ -1,5 +1,5 @@
 CC      := gcc
-CFLAGS  := -std=c11 -Wall -Wextra -Werror -Isrc/core -Iinclude
+CFLAGS  := -std=c11 -Wall -Wextra -Werror -I../../src/core -I../../include
 SRC_DIR := ../../src/core
 TEST_DIR := .
 
