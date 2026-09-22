@@ -10,8 +10,8 @@
     { "type": "wokwi-led", "id": "led_fan",  "top": 230, "left":  60, "attrs": { "color": "green" } },
     { "type": "wokwi-ds1307", "id": "rtc", "top": -120.6, "left": 480.1, "attrs": {} },
     { "type": "wokwi-slide-switch", "id": "water_switch", "top": -62.8, "left": -150.5, "attrs": { "bounce": "0" } },
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": { "wifi": "1" } }
-    
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": { "wifi": "1" } },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": 25.6, "left": 408.8, "attrs": { "pins": "i2c" } }
   ],
   "connections": [
 
@@ -38,7 +38,12 @@
     [ "esp:GND.1", "rtc:GND",     "black",  [ "v0" ] ],
 
     [ "esp:27",    "water_switch:1", "orange", [ "v0" ] ],
-    [ "esp:GND.1", "water_switch:2", "black",  [ "v0" ] ]
+    [ "esp:GND.1", "water_switch:2", "black",  [ "v0" ] ],
+
+    [ "esp:21",    "lcd:SDA",     "blue",   [ "v0" ] ],
+    [ "esp:22",    "lcd:SCL",     "yellow", [ "v0" ] ],
+    [ "esp:3V3",   "lcd:VCC",     "red",    [ "v0" ] ],
+    [ "esp:GND.1", "lcd:GND",     "black",  [ "v0" ] ]
   ],
   "dependencies": {}
 }
