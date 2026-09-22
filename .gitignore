@@ -29,3 +29,10 @@ Thumbs.db
 secrets.h
 *.pem
 *.key
+
+
+# Host test binaries
+firmware_v2_rtos_iot/test/host/test_fault_handling
+firmware_v2_rtos_iot/test/host/test_hysteresis
+firmware_v2_rtos_iot/test/host/test_pump_guards
+firmware_v2_rtos_iot/test/host/test_telemetry_json

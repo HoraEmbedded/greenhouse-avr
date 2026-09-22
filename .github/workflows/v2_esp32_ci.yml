@@ -17,6 +17,7 @@ jobs:
       - name: Run host tests
         run: |
           cd firmware_v2_rtos_iot/test/host
+          make clean
           make run
 
   build_wokwi:
