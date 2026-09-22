@@ -1,0 +1,25 @@
+name: V2 ESP32 CI
+
+on:
+  push:
+    paths:
+      - 'firmware_v2_rtos_iot/**'
+  pull_request:
+    paths:
+      - 'firmware_v2_rtos_iot/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PlatformIO
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO
+        run: pip install platformio
+      - name: Build V2
+        run: |
+          cd firmware_v2_rtos_iot
+          pio run

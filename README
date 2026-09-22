@@ -1,0 +1,17 @@
+# 🌿 Serre Industrielle : De l'ATmega2560 à l'ESP32 IoT
+
+Ce dépôt documente l'évolution complète d'une centrale de régulation de serre, depuis un firmware Bare-Metal 8-bits jusqu'à une architecture IoT 32-bits sécurisée.
+
+## Contenu du Dépôt
+
+| Dossier | Description |
+| :--- | :--- |
+| `firmware_v1_bare_metal/` | **V1** : Firmware Bare-Metal sur ATmega2560. Régulation locale par hystérésis, tests hôtes (98 cas), CI complète, simulation Wokwi. |
+| `firmware_v2_rtos_iot/` | **V2** : Migration vers ESP32 + FreeRTOS. Architecture multitâche préemptive, connectivité Wi-Fi, MQTT sur TLS, télémétrie Cloud. |
+
+## Démarrage Rapide
+
+### V1 (Bare-Metal)
+```bash
+cd firmware_v1_bare_metal
+pio run
