@@ -17,10 +17,7 @@ void sensors_init(SemaphoreHandle_t i2c_mutex)
     rtc_init();
     analog_init();
 
-    pinMode(PIN_FAN_LED,  OUTPUT);
-    pinMode(PIN_PUMP_LED, OUTPUT);
-    digitalWrite(PIN_FAN_LED,  LOW);
-    digitalWrite(PIN_PUMP_LED, LOW);
+
 }
 
 void sensors_read_all(SensorData_t *out, uint8_t *dht_failures)
@@ -46,7 +43,13 @@ void sensors_read_all(SensorData_t *out, uint8_t *dht_failures)
     out->timestamp_ms     = millis();
 }
 
-void actuators_init(void) {}
+void actuators_init(void)
+{
+    pinMode(PIN_FAN_LED,  OUTPUT);
+    pinMode(PIN_PUMP_LED, OUTPUT);
+    digitalWrite(PIN_FAN_LED,  LOW);
+    digitalWrite(PIN_PUMP_LED, LOW);
+}
 
 void actuators_apply(const ActuatorState_t *state)
 {

@@ -3,8 +3,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
-#include "config.h"
 
-void task_logic_start(QueueHandle_t sensor_queue, QueueHandle_t actuator_queue);
+void task_logic_start(QueueHandle_t sensor_queue, QueueHandle_t telemetry_queue);
 
 #endif

@@ -1,5 +1,6 @@
 #include "task_logic.h"
-
+#include "config.h"
+#include "sensors.h"
 
 #include "hysteresis.h"
 #include "thresholds.h"
@@ -7,9 +8,8 @@
 #include "water_level.h"
 #include "schedule.h"
 
-
 static QueueHandle_t s_sensor_queue;
-static QueueHandle_t s_actuator_queue;
+static QueueHandle_t s_telemetry_queue;
 
 static void task_logic_run(void *pvParameters)
 {
@@ -22,12 +22,14 @@ static void task_logic_run(void *pvParameters)
         .pump_off_percent = 60,
     };
 
-    bool    fan_state   = false;
-    bool    pump_state  = false;
-    uint8_t dht_failures = 0;
+    bool     fan_state   = false;
+    bool     pump_state  = false;
+    uint8_t  dht_failures = 0;
+    uint32_t sequence    = 0;
 
     SensorData_t    in;
-    ActuatorState_t out;
+    ActuatorState_t act;
+    Telemetry_t     tele;
 
     for (;;) {
         if (xQueueReceive(s_sensor_queue, &in, portMAX_DELAY) != pdPASS) {
@@ -38,7 +40,6 @@ static void task_logic_run(void *pvParameters)
 
         if (!sensor_fault) {
             dht_failures = 0;
-
             int16_t temp_dc = (int16_t)(in.temperature_c * 10.0f + 0.5f);
             fan_state = fan_hysteresis(fan_state, temp_dc, &config);
         } else {
@@ -51,20 +52,25 @@ static void task_logic_run(void *pvParameters)
         pump_state = pump_output_state(pump_state, in.water_level_ok);
         if (!in.is_daytime) pump_state = false;
 
-        out.fan_on       = fan_state;
-        out.pump_on      = pump_state;
-        out.sensor_fault = sensor_fault;
-        out.dht_failures = dht_failures;
-        out.timestamp_ms = in.timestamp_ms;
+        act.fan_on       = fan_state;
+        act.pump_on      = pump_state;
+        act.sensor_fault = sensor_fault;
+        act.dht_failures = dht_failures;
+        act.timestamp_ms = in.timestamp_ms;
 
-        xQueueOverwrite(s_actuator_queue, &out);
+        actuators_apply(&act);
+
+        tele.sensors  = in;
+        tele.actuators = act;
+        tele.sequence  = ++sequence;
+        xQueueOverwrite(s_telemetry_queue, &tele);
     }
 }
 
-void task_logic_start(QueueHandle_t sensor_queue, QueueHandle_t actuator_queue)
+void task_logic_start(QueueHandle_t sensor_queue, QueueHandle_t telemetry_queue)
 {
-    s_sensor_queue   = sensor_queue;
-    s_actuator_queue = actuator_queue;
+    s_sensor_queue    = sensor_queue;
+    s_telemetry_queue = telemetry_queue;
 
     xTaskCreatePinnedToCore(
         task_logic_run,
