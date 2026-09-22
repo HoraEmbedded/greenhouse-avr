@@ -13,7 +13,15 @@
 #define SOIL_ADC_AT_100_PERCENT  1023
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Maps raw ADC to 0-100%, clamped. */
 int8_t soil_percent_from_raw(uint16_t raw);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

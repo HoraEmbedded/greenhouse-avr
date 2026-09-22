@@ -7,6 +7,14 @@
 #define DAYTIME_START_HOUR 6
 #define DAYTIME_END_HOUR   20
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint8_t is_daytime(uint8_t hour);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
