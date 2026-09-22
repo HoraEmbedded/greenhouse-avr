@@ -1,12 +1,12 @@
 #include "task_logic.h"
 
-extern "C" {
+
 #include "hysteresis.h"
 #include "thresholds.h"
 #include "fault_handling.h"
 #include "water_level.h"
 #include "schedule.h"
-}
+
 
 static QueueHandle_t s_sensor_queue;
 static QueueHandle_t s_actuator_queue;

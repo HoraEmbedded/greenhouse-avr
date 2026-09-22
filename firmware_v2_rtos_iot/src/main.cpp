@@ -17,11 +17,12 @@
 #include <freertos/semphr.h>
 
 #include "config.h"
+#include "task_sensors.h"
 #include "task_logic.h"
 
-QueueHandle_t xSensorQueue   = NULL;
-QueueHandle_t xActuatorQueue = NULL;
-SemaphoreHandle_t xI2CMutex  = NULL;
+QueueHandle_t     xSensorQueue   = NULL;
+QueueHandle_t     xActuatorQueue = NULL;
+SemaphoreHandle_t xI2CMutex      = NULL;
 
 void setup()
 {
@@ -37,6 +38,7 @@ void setup()
         while (1) vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
+    task_sensors_start(xSensorQueue, xI2CMutex);
     task_logic_start(xSensorQueue, xActuatorQueue);
 
     Serial.println("[V2] scheduler running");

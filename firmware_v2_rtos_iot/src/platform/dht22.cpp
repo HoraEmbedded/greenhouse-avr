@@ -17,3 +17,4 @@ bool dht22_read(float *temperature_c, float *humidity_pct)
     *humidity_pct   = r.humidity;
     return true;
 }
+
