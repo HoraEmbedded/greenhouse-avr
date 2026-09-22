@@ -4,36 +4,61 @@ on:
   push:
     paths:
       - 'firmware_v2_rtos_iot/**'
+      - '.github/workflows/v2_esp32_ci.yml'
   pull_request:
     paths:
       - 'firmware_v2_rtos_iot/**'
 
 jobs:
-  build:
+  host_tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up PlatformIO
-        uses: actions/setup-python@v5
+      - name: Run host tests
+        run: |
+          cd firmware_v2_rtos_iot/test/host
+          make run
+
+  build_wokwi:
+    runs-on: ubuntu-latest
+    needs: host_tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install PlatformIO
         run: pip install platformio
-      - name: Build V2
+      - name: Build simulation environment
         run: |
           cd firmware_v2_rtos_iot
-          pio run
+          pio run -e esp32dev_wokwi
+
+  build_hardware:
+    runs-on: ubuntu-latest
+    needs: host_tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO
+        run: pip install platformio
+      - name: Create dummy secrets for build check
+        run: cp firmware_v2_rtos_iot/include/secrets.h.example firmware_v2_rtos_iot/include/secrets.h
+      - name: Build hardware environment
+        run: |
+          cd firmware_v2_rtos_iot
+          pio run -e esp32dev_hw
 
   secrets_check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check secrets.h.example exists
-        run: |
-          test -f firmware_v2_rtos_iot/include/secrets.h.example
-      - name: Check no secrets.h committed
+      - name: Ensure secrets.h is not committed
         run: |
           if [ -f firmware_v2_rtos_iot/include/secrets.h ]; then
             echo "ERROR: secrets.h must not be committed"
             exit 1
           fi
+          echo "OK: no secrets committed"
