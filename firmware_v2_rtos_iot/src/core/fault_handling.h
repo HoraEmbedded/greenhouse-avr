@@ -2,6 +2,7 @@
 #define FAULT_HANDLING_H
 
 #include <stdint.h>
+#include <stdbool.h> 
 
 #define DHT_FAILURE_SAFETY_THRESHOLD 5
 
