@@ -9,6 +9,7 @@
 #include "task_sensors.h"
 #include "task_logic.h"
 #include "task_network.h"
+#include "task_display.h"
 
 static QueueHandle_t     s_sensor_queue    = NULL;
 static QueueHandle_t     s_telemetry_queue = NULL;
@@ -33,7 +34,7 @@ void setup()
     task_sensors_start(s_sensor_queue, s_i2c_mutex);
     task_logic_start(s_sensor_queue, s_telemetry_queue);
     task_network_start(s_telemetry_queue);
-
+    task_display_start(s_telemetry_queue, s_i2c_mutex);
     Serial.println("[V2] scheduler running");
 }
 
