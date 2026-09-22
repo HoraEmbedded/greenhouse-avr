@@ -19,7 +19,15 @@ typedef struct {
 #define THRESHOLD_TEMP_MIN_DECIDEG (-400)
 #define THRESHOLD_TEMP_MAX_DECIDEG   800
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Range + ordering check. Pure, host-testable. */
 uint8_t thresholds_valid(const GreenhouseThresholds *t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

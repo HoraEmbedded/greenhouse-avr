@@ -8,10 +8,18 @@ typedef struct {
     uint16_t air_humidity_decipercent;
 } Dht22Reading;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Checksum: byte 4 vs sum of bytes 0-3, mod 256. */
 uint8_t dht22_checksum_valid(const uint8_t data[5]);
 
 /* Bit 7 of byte 2 = sign; bits 2-3 = magnitude. */
 Dht22Reading dht22_decode(const uint8_t data[5]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
