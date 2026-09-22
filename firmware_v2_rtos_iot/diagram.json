@@ -9,7 +9,9 @@
     { "type": "wokwi-led", "id": "led_pump", "top": 230, "left": -20, "attrs": { "color": "blue" } },
     { "type": "wokwi-led", "id": "led_fan",  "top": 230, "left":  60, "attrs": { "color": "green" } },
     { "type": "wokwi-ds1307", "id": "rtc", "top": -120.6, "left": 480.1, "attrs": {} },
-    { "type": "wokwi-slide-switch", "id": "water_switch", "top": -62.8, "left": -150.5, "attrs": { "bounce": "0" } }
+    { "type": "wokwi-slide-switch", "id": "water_switch", "top": -62.8, "left": -150.5, "attrs": { "bounce": "0" } },
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": { "wifi": "1" } }
+    
   ],
   "connections": [
 
