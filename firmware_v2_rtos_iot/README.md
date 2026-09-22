@@ -1,6 +1,3 @@
-**Fichier : `firmware_v2_rtos_iot/README.md`**
-
-```markdown
 # Serre connectée : ESP32 + FreeRTOS
 
 [![CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml)
@@ -102,4 +99,3 @@ cd test/host && make run
 - `PubSubClient` ne supporte pas QoS 1/2, envisager ESP-MQTT pour une
   fiabilité industrielle
 - Fenêtre horaire jour/nuit en constante de compilation
-```
