@@ -1,15 +1,3 @@
-/**
- * @file main.cpp
- * @brief Point d'entrée du firmware V2 - Serre IoT (ESP32 + FreeRTOS)
- * @author HoraEmbedded
- * @date 2026
- *
- * Architecture :
- * - Task_Sensors  (Priorité 3, Cœur 0) : Lecture I2C des capteurs
- * - Task_Logic    (Priorité 2, Cœur 0) : Régulation (hystérésis, gardes)
- * - Task_Network  (Priorité 1, Cœur 1) : Wi-Fi, MQTT/TLS, publication JSON
- */
-
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -17,29 +5,34 @@
 #include <freertos/semphr.h>
 
 #include "config.h"
+#include "sensors.h"
 #include "task_sensors.h"
 #include "task_logic.h"
+#include "task_network.h"
 
-QueueHandle_t     xSensorQueue   = NULL;
-QueueHandle_t     xActuatorQueue = NULL;
-SemaphoreHandle_t xI2CMutex      = NULL;
+static QueueHandle_t     s_sensor_queue    = NULL;
+static QueueHandle_t     s_telemetry_queue = NULL;
+static SemaphoreHandle_t s_i2c_mutex       = NULL;
 
 void setup()
 {
     Serial.begin(115200);
     Serial.println("[V2] boot");
 
-    xSensorQueue   = xQueueCreate(10, sizeof(SensorData_t));
-    xActuatorQueue = xQueueCreate(1,  sizeof(ActuatorState_t));
-    xI2CMutex      = xSemaphoreCreateMutex();
+    s_sensor_queue    = xQueueCreate(10, sizeof(SensorData_t));
+    s_telemetry_queue = xQueueCreate(1,  sizeof(Telemetry_t));
+    s_i2c_mutex       = xSemaphoreCreateMutex();
 
-    if (!xSensorQueue || !xActuatorQueue || !xI2CMutex) {
+    if (!s_sensor_queue || !s_telemetry_queue || !s_i2c_mutex) {
         Serial.println("[V2] fatal: rtos alloc failed");
         while (1) vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    task_sensors_start(xSensorQueue, xI2CMutex);
-    task_logic_start(xSensorQueue, xActuatorQueue);
+    actuators_init();
+
+    task_sensors_start(s_sensor_queue, s_i2c_mutex);
+    task_logic_start(s_sensor_queue, s_telemetry_queue);
+    task_network_start(s_telemetry_queue);
 
     Serial.println("[V2] scheduler running");
 }
