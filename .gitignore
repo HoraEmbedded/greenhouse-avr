@@ -36,3 +36,9 @@ firmware_v2_rtos_iot/test/host/test_fault_handling
 firmware_v2_rtos_iot/test/host/test_hysteresis
 firmware_v2_rtos_iot/test/host/test_pump_guards
 firmware_v2_rtos_iot/test/host/test_telemetry_json
+
+# V2 scenario artifacts
+firmware_v2_rtos_iot/tools/scenarios/*.yaml
+firmware_v2_rtos_iot/tools/captured_serial.txt
+firmware_v2_rtos_iot/tools/*.csv
+firmware_v2_rtos_iot/tools/*.png
