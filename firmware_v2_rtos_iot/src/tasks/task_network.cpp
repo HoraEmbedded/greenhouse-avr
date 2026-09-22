@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "task_network.h"
 #include "config.h"
 #include "publisher.h"
@@ -15,6 +16,8 @@ static void task_network_run(void *pvParameters)
         if (xQueuePeek(s_queue, &t, portMAX_DELAY) == pdPASS) {
             if (publisher_is_ready()) {
                 publisher_publish(&t);
+            } else {
+                Serial.println("[NET] wifi down, skipping publish");
             }
         }
         vTaskDelay(pdMS_TO_TICKS(NETWORK_PUBLISH_PERIOD_MS));
