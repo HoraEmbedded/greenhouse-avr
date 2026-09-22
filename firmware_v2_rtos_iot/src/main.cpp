@@ -16,68 +16,33 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 
-// --- Déclarations des handles FreeRTOS ---
-QueueHandle_t xSensorQueue = NULL;
-SemaphoreHandle_t xI2CMutex = NULL;
+#include "config.h"
+#include "task_logic.h"
 
-// --- Prototypes des tâches ---
-void vTaskSensors(void *pvParameters);
-void vTaskLogic(void *pvParameters);
-void vTaskNetwork(void *pvParameters);
+QueueHandle_t xSensorQueue   = NULL;
+QueueHandle_t xActuatorQueue = NULL;
+SemaphoreHandle_t xI2CMutex  = NULL;
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
-    Serial.println("[V2] Démarrage de la Serre IoT...");
+    Serial.println("[V2] boot");
 
-    // Queue pour les données capteurs
-    xSensorQueue = xQueueCreate(10, sizeof(SensorData_t));
-    if (xSensorQueue == NULL) {
-        Serial.println("[ERREUR] Impossible de créer la Queue.");
-        while (1);
+    xSensorQueue   = xQueueCreate(10, sizeof(SensorData_t));
+    xActuatorQueue = xQueueCreate(1,  sizeof(ActuatorState_t));
+    xI2CMutex      = xSemaphoreCreateMutex();
+
+    if (!xSensorQueue || !xActuatorQueue || !xI2CMutex) {
+        Serial.println("[V2] fatal: rtos alloc failed");
+        while (1) vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    // protéger le bus I2C
-    xI2CMutex = xSemaphoreCreateMutex();
-    if (xI2CMutex == NULL) {
-        Serial.println("[ERREUR] Impossible de créer le Mutex I2C.");
-        while (1);
-    }
+    task_logic_start(xSensorQueue, xActuatorQueue);
 
-    // les tâches
-    xTaskCreatePinnedToCore(vTaskSensors, "Task_Sensors", 4096, NULL, 3, NULL, 0);
-    xTaskCreatePinnedToCore(vTaskLogic,   "Task_Logic",   4096, NULL, 2, NULL, 0);
-    xTaskCreatePinnedToCore(vTaskNetwork, "Task_Network", 8192, NULL, 1, NULL, 1);
-
-    Serial.println("[V2] Tâches créées. Ordonnanceur FreeRTOS en cours...");
+    Serial.println("[V2] scheduler running");
 }
 
-void loop() {
-    
-}
-
-
-void vTaskSensors(void *pvParameters) {
-    (void)pvParameters;
-    const TickType_t xFrequency = pdMS_TO_TICKS(50); // 20 Hz
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-
-    for (;;) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-    }
-}
-
-void vTaskLogic(void *pvParameters) {
-    (void)pvParameters;
-    SensorData_t data;
-    for (;;) {
-        if (xQueueReceive(xSensorQueue, &data, portMAX_DELAY) == pdPASS) {
-            }
-    }
-}
-
-void vTaskNetwork(void *pvParameters) {
-    (void)pvParameters;
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(5000)); // Temporisation 
-    }
+void loop()
+{
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }
