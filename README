@@ -1,17 +1,61 @@
-# 🌿 Serre Industrielle : De l'ATmega2560 à l'ESP32 IoT
+# Centrale de régulation : de l'ATmega2560 à l'ESP32 IoT
 
-Ce dépôt documente l'évolution complète d'une centrale de régulation de serre, depuis un firmware Bare-Metal 8-bits jusqu'à une architecture IoT 32-bits sécurisée.
+[![V1 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml)
+[![V2 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml)
 
-## Contenu du Dépôt
+Monorepo retraçant l'évolution complète d'une centrale de régulation
+critique de serre. Du firmware Bare-metal 8-bits validé par 98 tests
+unitaires, à une architecture IoT 32-bits sécurisée répondant aux
+exigences Industrie 4.0.
+
+## Contenu du dépôt
 
 | Dossier | Description |
-| :--- | :--- |
-| `firmware_v1_bare_metal/` | **V1** : Firmware Bare-Metal sur ATmega2560. Régulation locale par hystérésis, tests hôtes (98 cas), CI complète, simulation Wokwi. |
-| `firmware_v2_rtos_iot/` | **V2** : Migration vers ESP32 + FreeRTOS. Architecture multitâche préemptive, connectivité Wi-Fi, MQTT sur TLS, télémétrie Cloud. |
+|---|---|
+| [`firmware_v1_bare_metal/`](firmware_v1_bare_metal/) | V1 : firmware C pur sur ATmega2560, drivers écrits depuis la datasheet, régulation locale par hystérésis |
+| [`firmware_v2_rtos_iot/`](firmware_v2_rtos_iot/) | V2 : migration ESP32 + FreeRTOS, télémétrie MQTT/TLS vers Cloud, écran LCD, double environnement simulation/hardware |
 
-## Démarrage Rapide
+## La démarche
 
-### V1 (Bare-Metal)
+La V1 démontre la maîtrise du temps réel contraint : super-boucle
+non bloquante, sommeil IDLE, watchdog, analyse de pile par désassemblage,
+preuve algébrique de durée de vie EEPROM. La V2 conserve cette rigueur
+et y ajoute ce que l'Industrie 4.0 exige : connectivité sécurisée,
+multitâche préemptif, séparation des responsabilités, télémétrie Cloud.
+
+Le coeur de décision (hystérésis, gardes pompe, dégradation capteur)
+reste en C pur, portable et testable sur PC, indépendamment de la cible.
+
+## Comparaison V1 / V2
+
+| | V1 Bare-metal | V2 RTOS / IoT |
+|---|---|---|
+| Cible | ATmega2560, 8 bits | ESP32, 32 bits dual-core |
+| Architecture | Super-boucle non bloquante | 4 tâches FreeRTOS préemptives |
+| Communication | Modules C appelés en séquence | Queues et Mutex inter-tâches |
+| Réseau | Aucun | Wi-Fi WPA2, MQTT sur TLS 1.2/1.3 |
+| Sécurité | Watchdog, checksum, EEPROM | Watchdog, TLS, Root CA, secrets isolés |
+| Tests hôte | 12 suites, 98 cas | 4 suites, 11 cas |
+| CI | 6 jobs | 4 jobs |
+| Simulation | Wokwi CLI | Wokwi CLI |
+| Sortie locale | LCD 1602 I2C | LCD 1602 I2C |
+| Sortie distante | Port série | Broker Cloud (HiveMQ) |
+
+## Démarrage rapide
+
 ```bash
+# V1
 cd firmware_v1_bare_metal
 pio run
+
+# V2 simulation
+cd firmware_v2_rtos_iot
+pio run -e esp32dev_wokwi
+wokwi-cli .
+```
+
+Documentation détaillée de chaque version dans son dossier respectif.
+
+## Auteur
+
+Projet personnel, Horacia Azonhoumon.
