@@ -36,8 +36,7 @@ void sensors_read_all(SensorData_t *out, uint8_t *dht_failures)
         } else {
             if (*dht_failures < 255) (*dht_failures)++;
         }
-        Serial.printf("[DHT] ok=%d T=%.1f H=%.1f\n",
-                  dht22_read(&t, &h) ? 1 : 0, t, h);
+        
     }
 
 
