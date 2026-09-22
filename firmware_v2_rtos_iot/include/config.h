@@ -32,4 +32,13 @@ typedef struct {
     uint32_t timestamp_ms;
 } ActuatorState_t;
 
+
+typedef struct {
+    SensorData_t    sensors;
+    ActuatorState_t actuators;
+    uint32_t        sequence;
+} Telemetry_t;
+
+#define NETWORK_PUBLISH_PERIOD_MS 1000
+
 #endif
