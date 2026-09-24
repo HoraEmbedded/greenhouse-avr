@@ -1,6 +1,7 @@
 # Centrale de régulation : de l'ATmega2560 à l'ESP32 IoT
 
 [![V1 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml)
+
 [![V2 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml)
 
 Monorepo retraçant l'évolution complète d'une centrale de régulation critique pour serre. Le projet présente deux générations d'architecture : un firmware bare-metal en C pour ATmega2560 (V1), puis une migration vers une architecture IoT basée sur ESP32 et FreeRTOS (V2).
