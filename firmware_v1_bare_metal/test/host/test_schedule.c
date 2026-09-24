@@ -1,0 +1,20 @@
+#include <stdio.h>
+#include "../../src/schedule.h"
+
+static int failures = 0;
+#define CHECK(desc, cond) do { if (cond) printf("  [OK] %s\n", desc); else { printf("  [FAIL] %s\n", desc); failures++; } } while (0)
+
+int main(void) {
+    printf("--- is_daytime() [%d-%d] ---\n", DAYTIME_START_HOUR, DAYTIME_END_HOUR);
+    CHECK("midnight is night", is_daytime(0) == 0);
+    CHECK("before window is night", is_daytime(DAYTIME_START_HOUR - 1) == 0);
+    CHECK("start hour is day (inclusive)", is_daytime(DAYTIME_START_HOUR) == 1);
+    CHECK("noon is day", is_daytime(12) == 1);
+    CHECK("before end is day", is_daytime(DAYTIME_END_HOUR - 1) == 1);
+    CHECK("end hour is night (exclusive)", is_daytime(DAYTIME_END_HOUR) == 0);
+    CHECK("late evening is night", is_daytime(23) == 0);
+    printf("\n");
+    if (failures == 0) { printf("=== all tests passed ===\n"); return 0; }
+    printf("=== %d test(s) FAILED ===\n", failures);
+    return 1;
+}

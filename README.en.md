@@ -1,78 +1,61 @@
-# Automated Greenhouse — ATmega2560
+# Regulation system: from ATmega2560 to ESP32 IoT
 
-[![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/ci.yml)
+[![V1 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml)
+[![V2 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml)
 
-Bare-metal firmware (Arduino Mega / ATmega2560) for automated greenhouse management: temperature/humidity (DHT22), soil moisture (ADC), fan and pump driven by hysteresis, EEPROM-backed configurable thresholds via serial commands, pump safety (water level + daytime-only irrigation), Wokwi simulation.
+Monorepo documenting the full evolution of a critical greenhouse
+regulation system. From an 8-bit bare-metal firmware validated by 98
+unit tests, to a secure 32-bit IoT architecture meeting Industry 4.0
+requirements.
 
-**Full documentation** (methodology, design decisions, detailed results, step-by-step guide, screenshots): [`docs/GUIDE_COMPLET.en.md`](docs/GUIDE_COMPLET.en.md).
+## Repository contents
 
-## What this project demonstrates
+| Folder | Description |
+|---|---|
+| [`firmware_v1_bare_metal/`](firmware_v1_bare_metal/) | V1: pure C firmware on ATmega2560, drivers written from the datasheet, local hysteresis control |
+| [`firmware_v2_rtos_iot/`](firmware_v2_rtos_iot/) | V2: ESP32 + FreeRTOS migration, MQTT/TLS telemetry to Cloud, LCD display, dual simulation/hardware environment |
 
-- Decision logic separated from hardware — testable without a microcontroller (12 suites, 98 cases, native `gcc`)
-- Dependability: hardware watchdog, graceful degradation on sensor failure, two independent pump safety interlocks
-- Formal worst-case stack analysis (63/8192 bytes, verified by real disassembly)
-- Algebraic proof on EEPROM lifetime (not a rough estimate)
-- Full CI verification pipeline (6 jobs): build, tests, coverage, static analysis, stack analysis, telemetry
-- Python capture/visualization tooling, with fully automated Wokwi simulation (`wokwi-cli`)
+## Approach
 
-## Hardware components
+V1 demonstrates mastery of hard real-time constraints: non-blocking
+super-loop, IDLE sleep, hardware watchdog, worst-case stack analysis by
+real disassembly, algebraic proof of EEPROM lifetime. V2 keeps that
+rigor and adds what Industry 4.0 demands: secure connectivity,
+preemptive multitasking, separation of concerns, Cloud telemetry.
 
-| Component | Role | Interface |
+The decision core (hysteresis, pump guards, sensor degradation) stays
+in pure C, portable and host-testable, regardless of the target.
+
+## V1 / V2 comparison
+
+| | V1 Bare-metal | V2 RTOS / IoT |
 |---|---|---|
-| DHT22 | Air temperature and humidity | 1-Wire, pin 2 |
-| Potentiometer | Simulates a soil moisture probe | ADC, A0 |
-| DS1307 | Real-time clock — daytime-only irrigation | I2C (0x68), shared with the display |
-| Float switch | Reservoir water level — pump safety | Digital, pin 3 |
-| LCD 1602 | Local display (temperature, humidity, states) | I2C (0x27) |
-| Blue / green LED | Simulate the pump / fan relays | Digital, pins 8/9 |
-
-## Software architecture
-
-| Module | Role |
-|---|---|
-| `hysteresis.c` | Fan/pump decision (dead band) |
-| `thresholds.c` | Threshold validation |
-| `command.c` | Serial command parser (`GET`/`SET`/`RESET`) |
-| `eeprom_config.c` | Persistence (magic byte + XOR checksum) |
-| `fault_handling.c` | Degradation after repeated DHT22 failures |
-| `ring_buffer.c` | Interrupt-driven UART reception |
-| `water_level.c` / `schedule.c` | Pump safety interlocks (water, day/night) |
-| `rtc_decode.c` / `dht22_decode.c` / `soil.c` | Sensor decoding |
-
-## Verified numbers
-
-| | |
-|---|---|
-| Host tests | 12 suites, 98 cases |
-| Coverage | 100% lines, 100% functions, 93.5% branches (86/92 — the rest proven unreachable) |
-| Worst-case stack | 63 / 8192 bytes (99.2% margin) |
-| Flash / RAM | ~4.1 KB / 425 bytes out of 253,952 / 8192 |
-| EEPROM lifetime | > 50 years normal use, 1 year even under deliberate abuse |
+| Target | ATmega2560, 8-bit | ESP32, 32-bit dual-core |
+| Architecture | Non-blocking super-loop | 4 preemptive FreeRTOS tasks |
+| Communication | Sequential C module calls | Inter-task Queues and Mutex |
+| Network | None | WPA2 Wi-Fi, MQTT over TLS 1.2/1.3 |
+| Security | Watchdog, checksum, EEPROM | Watchdog, TLS, Root CA, isolated secrets |
+| Host tests | 12 suites, 98 cases | 4 suites, 11 cases |
+| CI | 6 jobs | 4 jobs |
+| Simulation | Wokwi CLI | Wokwi CLI |
+| Local output | LCD 1602 I2C | LCD 1602 I2C |
+| Remote output | Serial port | Cloud broker (HiveMQ) |
 
 ## Quick start
 
 ```bash
-# Firmware
+# V1
+cd firmware_v1_bare_metal
 pio run
 
-# Unit tests + coverage
-cd test/host && make run && make coverage
-
-# Static and stack analysis
-cppcheck --enable=warning,style,performance,portability --inconclusive --std=c11 -Isrc src/*.c
-python tools/stack_analysis.py
-
-# Telemetry (automated Wokwi capture)
-cd tools/telemetry
-pip install -r requirements.txt
-python generate_drift_scenario.py --output drift_scenario.yaml
-python capture_and_plot.py --scenario drift_scenario.yaml --duration 100
+# V2 simulation
+cd firmware_v2_rtos_iot
+pio run -e esp32dev_wokwi
+wokwi-cli .
 ```
 
-Full step-by-step procedure and troubleshooting: [`docs/GUIDE_COMPLET.en.md`](docs/GUIDE_COMPLET.en.md).
+Detailed documentation for each version lives in its own folder.
 
-## Known limitations
+## Author
 
-- Soil probe simulated by a potentiometer — real calibration needed on an actual capacitive probe
-- No validation on real silicon; everything is verified in simulation + host tests
-- Day/night window is a compile-time constant, not yet EEPROM-configurable
+Personal project, Horacia Azonhoumon.

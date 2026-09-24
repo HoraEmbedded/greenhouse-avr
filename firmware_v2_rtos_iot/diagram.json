@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "author": "HoraEmbedded",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht", "top": -190, "left": -60, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot", "top": -190, "left": 220, "attrs": {} },
+    { "type": "wokwi-led", "id": "led_pump", "top": 230, "left": -20, "attrs": { "color": "blue" } },
+    { "type": "wokwi-led", "id": "led_fan",  "top": 230, "left":  60, "attrs": { "color": "green" } },
+    { "type": "wokwi-ds1307", "id": "rtc", "top": -120.6, "left": 480.1, "attrs": {} },
+    { "type": "wokwi-slide-switch", "id": "water_switch", "top": -62.8, "left": -150.5, "attrs": { "bounce": "0" } },
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": { "wifi": "1" } },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": 25.6, "left": 408.8, "attrs": { "pins": "i2c" } }
+  ],
+  "connections": [
+
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3",   "dht:VCC",     "red",    [ "v0" ] ],
+
+    [ "esp:3V3",   "dht:VCC",     "red",    [ "v0" ] ],
+    [ "esp:GND.1", "dht:GND",     "black",  [ "v0" ] ],
+    [ "esp:4",     "dht:SDA",     "green",  [ "v0" ] ],
+
+    [ "esp:3V3",   "pot:VCC",     "red",    [ "v0" ] ],
+    [ "esp:GND.1", "pot:GND",     "black",  [ "v0" ] ],
+    [ "esp:34",    "pot:SIG",     "orange", [ "v0" ] ],
+
+    [ "esp:25",    "led_fan:A",   "green",  [ "v0" ] ],
+    [ "esp:GND.2", "led_fan:C",   "black",  [ "v0" ] ],
+    [ "esp:26",    "led_pump:A",  "blue",   [ "v0" ] ],
+    [ "esp:GND.2", "led_pump:C",  "black",  [ "v0" ] ],
+
+    [ "esp:21",    "rtc:SDA",     "blue",   [ "v0" ] ],
+    [ "esp:22",    "rtc:SCL",     "yellow", [ "v0" ] ],
+    [ "esp:3V3",   "rtc:5V",      "red",    [ "v0" ] ],
+    [ "esp:GND.1", "rtc:GND",     "black",  [ "v0" ] ],
+
+    [ "esp:27",    "water_switch:1", "orange", [ "v0" ] ],
+    [ "esp:GND.1", "water_switch:2", "black",  [ "v0" ] ],
+
+    [ "esp:21",    "lcd:SDA",     "blue",   [ "v0" ] ],
+    [ "esp:22",    "lcd:SCL",     "yellow", [ "v0" ] ],
+    [ "esp:3V3",   "lcd:VCC",     "red",    [ "v0" ] ],
+    [ "esp:GND.1", "lcd:GND",     "black",  [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
