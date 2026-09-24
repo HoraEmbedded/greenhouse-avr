@@ -10,13 +10,17 @@ Monorepo retraçant l'évolution complète d'une centrale de régulation critiqu
 
 ### V1 : Serre automatisée sur ATmega2560
 
-[![V1 simulation](pictures/v1_thumbnail.png)](https://youtu.be/q6eLAhxcG84)
+[<img src="https://img.youtube.com/vi/q6eLAhxcG84/maxresdefault.jpg" width="480" alt="V1 simulation">](https://youtu.be/q6eLAhxcG84)
+
+▶️ **[Voir la vidéo sur YouTube](https://youtu.be/q6eLAhxcG84)**
 
 Firmware bare-metal, régulation par hystérésis, gardes pompe indépendantes, commandes série persistées en EEPROM.
 
 ### V2 : Serre connectée sur ESP32
 
-[![V2 simulation](pictures/v2_thumbnail.png)](https://www.youtube.com/watch?v=1_EZUG0B92Y)
+[<img src="https://img.youtube.com/vi/1_EZUG0B92Y/maxresdefault.jpg" width="480" alt="V2 simulation">](https://www.youtube.com/watch?v=1_EZUG0B92Y)
+
+▶️ **[Voir la vidéo sur YouTube](https://www.youtube.com/watch?v=1_EZUG0B92Y)**
 
 Architecture FreeRTOS, MQTT sur TLS, télémétrie JSON vers broker Cloud.
 
