@@ -104,5 +104,3 @@ La documentation détaillée de chaque version est disponible dans son dossier r
 ## Auteur
 
 Projet personnel réalisé par Horacia Azonhoumon.
-
-Une fois ces étapes faites, n'importe qui visitant ton dépôt verra immédiatement l'histoire du projet, les vidéos de démonstration, et les liens vers les deux versions. C'est exactement ce qu'un recruteur veut voir.
