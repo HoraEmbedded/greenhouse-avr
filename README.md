@@ -6,23 +6,30 @@
 
 Monorepo retraçant l'évolution complète d'une centrale de régulation critique pour serre. Le projet présente deux générations d'architecture : un firmware bare-metal en C pour ATmega2560 (V1), puis une migration vers une architecture IoT basée sur ESP32 et FreeRTOS (V2).
 
-## Démonstrations
+## 🎬 Démonstrations
 
 ### V1 : Serre automatisée sur ATmega2560
 
-[<img src="https://img.youtube.com/vi/q6eLAhxcG84/maxresdefault.jpg" width="480" alt="V1 simulation">](https://youtu.be/q6eLAhxcG84)
+[![V1 Simulation](https://img.youtube.com/vi/q6eLAhxcG84/hqdefault.jpg)](https://youtu.be/q6eLAhxcG84)
 
 ▶️ **[Voir la vidéo sur YouTube](https://youtu.be/q6eLAhxcG84)**
 
-Firmware bare-metal, régulation par hystérésis, gardes pompe indépendantes, commandes série persistées en EEPROM.
+- Firmware bare-metal en C
+- Régulation par hystérésis (température & humidité du sol)
+- Gardes de pompe indépendantes et gestion des erreurs capteurs
+- Interface série (CLI) avec sauvegarde de la configuration en EEPROM
+
+---
 
 ### V2 : Serre connectée sur ESP32
 
-[<img src="https://img.youtube.com/vi/1_EZUG0B92Y/maxresdefault.jpg" width="480" alt="V2 simulation">](https://www.youtube.com/watch?v=1_EZUG0B92Y)
+[![V2 Simulation](https://img.youtube.com/vi/1_EZUG0B92Y/hqdefault.jpg)](https://www.youtube.com/watch?v=1_EZUG0B92Y)
 
 ▶️ **[Voir la vidéo sur YouTube](https://www.youtube.com/watch?v=1_EZUG0B92Y)**
 
-Architecture FreeRTOS, MQTT sur TLS, télémétrie JSON vers broker Cloud.
+- Architecture multithreadée sous FreeRTOS
+- Communication MQTT sécurisée sur TLS
+- Télémétrie au format JSON vers un broker Cloud
 
 ## Le problème initial
 
