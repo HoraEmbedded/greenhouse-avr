@@ -42,3 +42,7 @@ firmware_v2_rtos_iot/tools/scenarios/*.yaml
 firmware_v2_rtos_iot/tools/captured_serial.txt
 firmware_v2_rtos_iot/tools/*.csv
 firmware_v2_rtos_iot/tools/*.png
+
+# Video raw files
+videos/
+*.mkv
