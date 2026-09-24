@@ -1,76 +1,108 @@
-# Serre automatisée : ATmega2560
+# Centrale de régulation : de l'ATmega2560 à l'ESP32 IoT
 
-[![CI](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml/badge.svg)](https://github.com/<utilisateur>/<depot>/actions/workflows/ci.yml)
+[![V1 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/ci.yml)
+[![V2 CI](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml/badge.svg)](https://github.com/HoraEmbedded/greenhouse-avr/actions/workflows/v2_esp32_ci.yml)
 
-Firmware bare-metal (Arduino Mega / ATmega2560) pour la gestion automatisée d'une serre : température/humidité (DHT22), humidité du sol (ADC), ventilateur et pompe pilotés par hystérésis, seuils configurables en EEPROM via commandes série, sécurité pompe (niveau d'eau + irrigation diurne uniquement), simulation Wokwi.
+Monorepo retraçant l'évolution complète d'une centrale de régulation critique pour serre. Le projet présente deux générations d'architecture : un firmware bare-metal en C pour ATmega2560 (V1), puis une migration vers une architecture IoT basée sur ESP32 et FreeRTOS (V2).
 
+## Démonstrations
 
-## Ce que ce projet démontre
+### V1 : Serre automatisée sur ATmega2560
 
-- Logique de décision séparée du matériel — testable sans microcontrôleur (12 suites, 98 cas, `gcc` natif)
-- Sûreté de fonctionnement : watchdog matériel, dégradation gracieuse en cas de panne capteur, deux gardes de sécurité indépendantes sur la pompe
-- Analyse formelle du pire cas de pile (63/8192 octets, vérifiée par désassemblage réel)
-- Preuve algébrique sur la durée de vie EEPROM (pas une estimation à la louche)
-- Pipeline de vérification complet en CI (6 jobs) : build, tests, couverture, analyse statique, analyse de pile, télémétrie
-- Outillage Python de capture/visualisation, avec simulation Wokwi entièrement automatisée (`wokwi-cli`)
+[![V1 simulation](pictures/v1_thumbnail.png)](https://youtu.be/q6eLAhxcG84)
 
-## Composants matériels
+Firmware bare-metal, régulation par hystérésis, gardes pompe indépendantes, commandes série persistées en EEPROM.
 
-| Composant | Rôle | Interface |
+### V2 : Serre connectée sur ESP32
+
+[![V2 simulation](pictures/v2_thumbnail.png)](https://www.youtube.com/watch?v=1_EZUG0B92Y)
+
+Architecture FreeRTOS, MQTT sur TLS, télémétrie JSON vers broker Cloud.
+
+## Le problème initial
+
+La gestion d'une serre repose sur des paramètres critiques : température, humidité de l'air et du sol. Une défaillance peut entraîner des pertes de récolte. Un système de régulation doit donc être fiable, prévisible, et capable de fonctionner en autonomie tout en signalant les anomalies.
+
+## La solution : deux générations, une même rigueur
+
+### V1 : Maîtrise du temps réel contraint
+
+La première version a été conçue comme un exercice de style bare-metal :
+- **Firmware C pur** sans framework Arduino, drivers écrits depuis la datasheet.
+- **Super-boucle non bloquante** avec sommeil IDLE et watchdog matériel.
+- **Régulation par hystérésis** pour le ventilateur (26/24 °C) et la pompe (30/60 %).
+- **Deux gardes indépendantes** sur la pompe : niveau d'eau et irrigation diurne uniquement.
+- **Validation rigoureuse** : 12 suites de tests hôte, 98 cas, 100 % de couverture lignes et fonctions, analyse de pile par désassemblage réel (63/8192 octets, 99,2 % de marge).
+
+### V2 : L'extension IoT sécurisée
+
+La deuxième version conserve la logique métier et l'étend vers le Cloud :
+- **Architecture FreeRTOS** : 4 tâches préemptives (Sensors, Logic, Network, Display) réparties sur 2 cœurs.
+- **Communication inter-tâches** par Queues et Mutex pour protéger le bus I2C.
+- **Chaîne Edge-to-Cloud sécurisée** : Wi-Fi WPA2, MQTT sur TLS 1.2/1.3, authentification par Root CA, payload JSON.
+- **Double environnement PlatformIO** : simulation Wokwi et carte ESP32 réelle.
+- **Isolation des secrets** : `secrets.h` non versionné, template `.example` fourni pour la CI.
+
+Le cœur de décision reste en **C pur**, portable et testable sur PC, indépendamment de la cible matérielle.
+
+## Difficultés rencontrées
+
+- **Portage des drivers** : le protocole 1-Wire du DHT22, sensible au timing, ne fonctionnait pas correctement dans le simulateur Wokwi. Solution : deux implémentations distinctes (bit-bang pour le matériel, DHTesp pour la simulation) sélectionnées par filtre de sources PlatformIO.
+- **Synchronisation des tâches** : le partage du bus I2C entre la RTC, le LCD et les capteurs nécessitait un Mutex pour éviter les conflits d'accès.
+- **Gestion des secrets** : la configuration CI devait générer un `secrets.h` factice à partir d'un template pour compiler l'environnement matériel sans exposer les vrais identifiants.
+- **Limites de la simulation** : Wokwi gratuit ne ponte pas le Wi-Fi vers Internet, ce qui empêche la validation Cloud en simulation.
+
+## Perspectives
+
+- Validation du client MQTT/TLS sur une carte ESP32 physique.
+- Ajout de QoS 1/2 pour une fiabilité industrielle (via ESP-MQTT).
+- Configuration de la fenêtre horaire jour/nuit en EEPROM.
+- Intégration d'un dashboard Cloud (HiveMQ Web Client ou Grafana).
+- Ajout d'un mode économie d'énergie avec réveil périodique.
+
+## Contenu du dépôt
+
+| Dossier | Description |
+|---|---|
+| [`firmware_v1_bare_metal/`](firmware_v1_bare_metal/) | V1 : firmware C pur sur ATmega2560, drivers depuis la datasheet |
+| [`firmware_v2_rtos_iot/`](firmware_v2_rtos_iot/) | V2 : migration ESP32 + FreeRTOS, MQTT/TLS, double environnement |
+
+## Comparaison V1 / V2
+
+| | V1 Bare-metal | V2 RTOS / IoT |
 |---|---|---|
-| DHT22 | Température et humidité de l'air | 1-Wire, broche 2 |
-| Potentiomètre | Simule une sonde d'humidité du sol | ADC, A0 |
-| DS1307 | Horloge temps réel — irrigation le jour uniquement | I2C (0x68), partagé avec l'écran |
-| Interrupteur à flotteur | Niveau d'eau du réservoir — sécurité pompe | Numérique, broche 3 |
-| LCD 1602 | Affichage local (température, humidité, états) | I2C (0x27) |
-| LED bleue / verte | Simulent les relais pompe / ventilateur | Numérique, broches 8/9 |
-
-## Architecture logicielle
-
-| Module | Rôle |
-|---|---|
-| `hysteresis.c` | Décision ventilateur/pompe (bande morte) |
-| `thresholds.c` | Validation des seuils |
-| `command.c` | Analyseur de commandes série (`GET`/`SET`/`RESET`) |
-| `eeprom_config.c` | Persistance (octet magique + checksum XOR) |
-| `fault_handling.c` | Dégradation après pannes DHT22 répétées |
-| `ring_buffer.c` | Réception UART par interruption |
-| `water_level.c` / `schedule.c` | Gardes de sécurité pompe (eau, horaire jour/nuit) |
-| `rtc_decode.c` / `dht22_decode.c` / `soil.c` | Décodage capteurs |
-
-## Chiffres vérifiés
-
-| | |
-|---|---|
-| Tests hôte | 12 suites, 98 cas |
-| Couverture | 100 % lignes, 100 % fonctions, 93,5 % branches (86/92 — le reste prouvé inatteignable) |
-| Pire cas de pile | 63 / 8192 octets (99,2 % de marge) |
-| Flash / RAM | ~4,1 Ko / 425 octets sur 253 952 / 8192 |
-| Durée de vie EEPROM | > 50 ans en usage normal, 1 an même en cas d'abus délibéré |
+| Cible | ATmega2560, 8 bits | ESP32, 32 bits dual-core |
+| Architecture | Super-boucle non bloquante | 4 tâches FreeRTOS préemptives |
+| Communication | Modules C appelés en séquence | Queues et mutex inter-tâches |
+| Réseau | Aucun | Wi-Fi WPA2, MQTT sur TLS 1.2/1.3 |
+| Sécurité | Watchdog, checksum, EEPROM | Watchdog, TLS, Root CA, secrets isolés |
+| Tests hôte | 12 suites, 98 cas | 4 suites, 11 cas |
+| CI | 6 jobs | 4 jobs |
+| Simulation | Wokwi CLI | Wokwi CLI |
+| Sortie locale | LCD 1602 I2C | LCD 1602 I2C |
+| Sortie distante | Port série | Broker Cloud HiveMQ |
 
 ## Démarrage rapide
 
+### V1
+
 ```bash
-# Firmware
+cd firmware_v1_bare_metal
 pio run
-
-# Tests unitaires + couverture
-cd test/host && make run && make coverage
-
-# Analyse statique et pile
-cppcheck --enable=warning,style,performance,portability --inconclusive --std=c11 -Isrc src/*.c
-python tools/stack_analysis.py
-
-# Télémétrie (capture automatisée via Wokwi)
-cd tools/telemetry
-pip install -r requirements.txt
-python generate_drift_scenario.py --output drift_scenario.yaml
-python capture_and_plot.py --scenario drift_scenario.yaml --duration 100
 ```
 
+### V2, simulation
 
-## Limites connues
+```bash
+cd firmware_v2_rtos_iot
+pio run -e esp32dev_wokwi
+wokwi-cli .
+```
 
-- Sonde de sol simulée par un potentiomètre — calibration réelle à refaire sur une vraie sonde capacitive
-- Aucune validation sur silicium réel, tout est vérifié en simulation + tests hôte
-- Fenêtre horaire jour/nuit en constante de compilation, pas encore configurable en EEPROM
+La documentation détaillée de chaque version est disponible dans son dossier respectif.
+
+## Auteur
+
+Projet personnel réalisé par Horacia Azonhoumon.
+
+Une fois ces étapes faites, n'importe qui visitant ton dépôt verra immédiatement l'histoire du projet, les vidéos de démonstration, et les liens vers les deux versions. C'est exactement ce qu'un recruteur veut voir.
