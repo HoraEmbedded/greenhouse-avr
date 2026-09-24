@@ -275,6 +275,7 @@ int main(void) {
             pump_state = pump_output_state(pump_state, water_ok);
 
             uint8_t current_hour = rtc_read_hour();
+            
             uint8_t daytime = is_daytime(current_hour);
             if (!daytime) pump_state = 0;
 
